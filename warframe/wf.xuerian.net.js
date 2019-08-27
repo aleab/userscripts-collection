@@ -14,7 +14,8 @@
             searchHighlightColor: [ '#F10A63', '#C40850' ],
             rarityColors: [ '#B87333', '#C0C0C0', '#E2C012' ]
         };
-        _(this).reliquaryParts = null;
+        _(this).relicParts = null;
+        _(this).relicSources = null;
 
         Object.defineProperty(this, 'Settings', { get: () => _(this).Settings });
     }
@@ -22,7 +23,8 @@
     WfXuerianNet.prototype.doStuff = async function() {
         console.log(`WARFRAME | wf.xuerian.net: ${window.location.href}`);
 
-        _(this).reliquaryParts = null;
+        _(this).relicParts = null;
+        _(this).relicSources = null;
 
         $('#content').css({ 'padding-top': '15px' });
 
@@ -30,11 +32,13 @@
         if (REGEX_WISHLIST_PAGE.test(currentUrl)) {
             await wishlist.miscTweaks(this);
         } else if (REGEX_RELIQUARY_PAGE.test(currentUrl)) {
-            await reliquary.addSearchField(this);
-            await reliquary.addOptions(this);
-            await reliquary.miscTweaks(this);
+            reliquary.getReliquaryPartsAndSources(this);
 
-            _(this).reliquaryParts = $('.relics.box-container > .relic.box > .rewards > .reward.wanted > .name');
+            await reliquary.addRewardsSearchField(this);
+            await reliquary.addRewardsOptions(this);
+            await reliquary.addSourcesSearchField(this);
+
+            await reliquary.miscTweaks(this);
         }
     };
 
@@ -58,14 +62,25 @@
     };
 
     const reliquary = {
-        addSearchField: async function(self) {
-            await waitFor('#content > div.reliquary > .legend > .wanker');
+        getReliquaryPartsAndSources: async function(self) {
+            await waitFor('.relics.box-container > .relic.box > .rewards');
+            _(self).relicParts = $('.relics.box-container > .relic.box > .rewards > .reward.wanted > .name');
+
+            await waitFor('.sources.box-container > .source.box > .rotations');
+            _(self).relicSources = $('.sources.box-container > .source.box > .rotations span[relic]');
+        },
+
+        // REWARDS
+        addRewardsSearchField: async function(self) {
+            await waitFor('#content > div.reliquary > .relics.box-container');
             $('#aleab-part-search').remove();
-            $('#content > div.reliquary > .legend').css({ 'margin-bottom': '4px' });
+
+            let legend = $('#content > div.reliquary > .relics.box-container').prevAll().filter('.legend')[0];
+            $(legend).css({ 'margin-bottom': '4px' });
 
             let div = document.createElement('div');
             $(div).addClass('wanker').attr('id', 'aleab-part-search');
-            $(div).appendTo('#content > div.reliquary > .legend');
+            $(div).appendTo(legend);
 
             let input = document.createElement('input');
             $(input).attr('type', 'text').attr('placeholder', 'Search...').css({ 'border-radius': '5px', 'padding': '1px 3px' });
@@ -73,28 +88,27 @@
                     .blur(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '' }));
             $(input).keyup(ev => {
                 let SETTINGS = _(self).Settings;
-                let reliquaryParts = _(self).reliquaryParts;
+                let relicParts = _(self).relicParts;
 
-                if (!reliquaryParts || reliquaryParts.length == 0)
+                if (!relicParts || relicParts.length == 0)
                     return;
 
                 let filter = ev.currentTarget.value;
                 let regex = RegExp(`(${filter.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})`, 'gi');
 
                 // Clear highlighted text
-                for (let i = 0; i < reliquaryParts.length; ++i) {
-                    reliquaryParts[i].innerHTML = reliquaryParts[i].innerText;
+                for (let i = 0; i < relicParts.length; ++i) {
+                    relicParts[i].innerHTML = relicParts[i].innerText;
                 }
                 let exceptVaulted = window.localStorage.getItem('aleab-reliquary_hideVaulted') === 'true' ? ':not(.vaulted)' : '';
-                reliquaryParts.closest(`.relic.box:not(.aleab-filter-show)${exceptVaulted}`).css({ 'display': '' });
-                reliquaryParts.closest('.relic.box.aleab-filter-show').removeClass('aleab-filter-show');
+                relicParts.closest(`.relic.box:not(.aleab-filter-show)${exceptVaulted}`).css({ 'display': '' });
+                relicParts.closest('.relic.box.aleab-filter-show').removeClass('aleab-filter-show');
 
                 // Highlight text
                 if (!filter || filter.length == 0)
                     return;
 
-                let matchingParts = $.grep(reliquaryParts, (e, i) => e.innerText.toLowerCase().indexOf(filter.toLowerCase()) > -1);
-                console.log(matchingParts);
+                let matchingParts = $.grep(relicParts, (e, i) => e.innerText.toLowerCase().indexOf(filter.toLowerCase()) > -1);
                 for (let i = 0; i < matchingParts.length; ++i) {
                     let rarity = $(matchingParts[i]).closest('.reward.wanted').find('.chance').text();
                     let outline = rarity !== '25-17%'
@@ -105,12 +119,12 @@
 
                     $(matchingParts[i]).closest('.relic.box').addClass('aleab-filter-show');
                 }
-                reliquaryParts.closest('.relic.box:not(.aleab-filter-show)').css({ 'display': 'none' });
+                relicParts.closest('.relic.box:not(.aleab-filter-show)').css({ 'display': 'none' });
             });
             $(input).appendTo(div);
         },
 
-        addOptions: async function(self) {
+        addRewardsOptions: async function(self) {
             await waitFor('#content > div.reliquary > .legend');
             $('#aleab-options').remove();
 
@@ -146,10 +160,63 @@
             hideVaulted(window.localStorage.getItem('aleab-reliquary_hideVaulted') === 'true');
         },
 
+        // SOURCES
+        addSourcesSearchField: async function(self) {
+            await waitFor('#content > div.reliquary > .sources.box-container');
+            $('#aleab-sources-legend').remove();
+
+            let inputKeyup = ev => {
+                let SETTINGS = _(self).Settings;
+                let relicSources = _(self).relicSources;
+
+                if (!relicSources || relicSources.length === 0)
+                    return;
+
+                let filter = ev.currentTarget.value;
+                let regex = RegExp(`(${filter.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})`, 'gi');
+
+                // Clear highlighted text
+                for (let i = 0; i < relicSources.length; ++i) {
+                    $(relicSources[i]).css({ 'font-weight': '', 'text-shadow': '' });
+                }
+                let onlyActiveBounties = window.localStorage.getItem('aleab-reliquary_hideInactiveSources') === 'true' ? '.active-bounty' : '';
+                relicSources.closest(`.source.box.bounty${onlyActiveBounties}:not(.aleab-filter-show)`).css({ 'display': '' });
+                relicSources.closest('.source.box:not(.bounty):not(.aleab-filter-show)').css({ 'display': '' });
+                relicSources.closest('.source.box.aleab-filter-show').removeClass('aleab-filter-show');
+
+                // Highlight text
+                if (!filter || filter.length == 0)
+                    return;
+
+                let matchingSources = $.grep(relicSources, (e, i) => e.getAttribute('relic').toLowerCase().indexOf(filter.toLowerCase()) > -1);
+                for (let i = 0; i < matchingSources.length; ++i) {
+                    let rarity = $(matchingSources[i]).closest('.reward.wanted').find('.chance').text();
+                    let outline = `${SETTINGS.searchHighlightColor[0]} 0px 0px 2px, ${SETTINGS.searchHighlightColor[0]} 0px 0px 2px, ${SETTINGS.searchHighlightColor[0]} 0px 0px 2px`;
+                    $(matchingSources[i]).css({ 'font-weight': 'bold', 'text-shadow': outline });
+                    $(matchingSources[i]).closest('.source.box').addClass('aleab-filter-show');
+                }
+                relicSources.closest('.source.box:not(.aleab-filter-show)').css({ 'display': 'none' });
+            };
+
+            $(document.createElement('div')).addClass('legend').attr('id', 'aleab-sources-legend').css({ 'margin-bottom': '4px' }).append(
+                $(document.createElement('div')).addClass('wanker').append(
+                    $(document.createElement('div')).addClass('name').append('Sources')
+                )
+            ).append(
+                $(document.createElement('div')).addClass('wanker').append(
+                    $(document.createElement('input')).attr('type', 'text').attr('placeholder', 'Search...')
+                      .css({ 'border-radius': '5px', 'padding': '1px 3px' })
+                      .focus(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '0 0 0pt 1pt #4265A5' }))
+                      .blur(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '' }))
+                      .keyup(inputKeyup)
+                )
+            ).insertBefore('#content > div.reliquary > .sources.box-container');
+        },
+
         miscTweaks: async function(self) {
             let SETTINGS = _(self).Settings;
             
-            //Use different text color for each relic rarity
+            // Use different text color for each relic rarity
             await waitFor('.relics.box-container')
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("25-17%"))').css('color', SETTINGS.rarityColors[0]);
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("11-20%"))').css('color', SETTINGS.rarityColors[1]);
@@ -158,6 +225,7 @@
             // Hide inactive sources
             await waitFor('.sources.box-container')
             $('.sources.box-container > .source.bounty:not(.active-bounty)').css({ 'display': 'none' });
+            window.localStorage.setItem('aleab-reliquary_hideInactiveSources', true);
         }
     };
 
