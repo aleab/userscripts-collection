@@ -59,9 +59,6 @@
 
     const reliquary = {
         addSearchField: async function(self) {
-            let SETTINGS = _(self).Settings;
-            let reliquaryParts = _(self).reliquaryParts;
-
             await waitFor('#content > div.reliquary > .legend > .wanker');
             $('#aleab-part-search').remove();
             $('#content > div.reliquary > .legend').css({ 'margin-bottom': '4px' });
@@ -75,6 +72,9 @@
             $(input).focus(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '0 0 0pt 1pt #4265A5' }))
                     .blur(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '' }));
             $(input).keyup(ev => {
+                let SETTINGS = _(self).Settings;
+                let reliquaryParts = _(self).reliquaryParts;
+
                 if (!reliquaryParts || reliquaryParts.length == 0)
                     return;
 
@@ -119,7 +119,7 @@
 
             $(document.createElement('div')).append(
                 $(document.createElement('label'))
-                  .css({ 'display': 'block', 'text-indent': '22px', 'font-size': '0.95em' }).append(
+                  .css({ 'display': 'inline-block', 'text-indent': '22px', 'font-size': '0.95em' }).append(
                       $(document.createElement('input')).attr('id', 'aleab-cb-hideVaulted').attr('type', 'checkbox')
                         .css({ 'vertical-align': 'middle' })
                 ).append(
