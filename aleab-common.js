@@ -10,7 +10,7 @@ const ALEAB_JQUERY_VERSION = '3.4.1';
     };
 
     let aleab = window.aleab ? window.aleab : (window.aleab = {});
-    loadJS(`https://code.jquery.com/jquery-${ALEAB_JQUERY_VERSION}.min.js`, document.body, () => { (aleab.modules ? aleab.modules : (aleab.modules = {}))[name] = true; });
+    loadJS(`https://code.jquery.com/jquery-${ALEAB_JQUERY_VERSION}.min.js`, document.body, () => { (aleab.modules ? aleab.modules : (aleab.modules = {}))['jQuery'] = true; });
 
     aleab.waitForModules = function(timeout) {
         return new Promise(async (resolve, reject) => {
@@ -34,14 +34,13 @@ const ALEAB_JQUERY_VERSION = '3.4.1';
             else {
                 let str = 'Timeout while waiting for modules!'
                 console.error(`[aleab-common] ${str}\n  Expected:`, modules, '\n  Loaded:', aleab.modules);
-                reject(new Error(str));
+                reject(str);
             }
         });
     }
 
     aleab.setPageChangeEvent = function(fn) {
-        $(window).on('popstate', fn);
-        $(history).onpushstate = fn;
+        window.onpopstate = history.onpushstate = fn;
     }
 })();
 
