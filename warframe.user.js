@@ -14,9 +14,9 @@
 // @require      https://raw.githubusercontent.com/aleab/userscripts-collection/v1.0.5/aleab-common.js
 // ==/UserScript==
 
-/* jshint esversion: 6            */
-/* eslint curly: off              */
-/* global $: false, aleab: false  */
+/* jshint esversion: 6              */
+/* eslint curly: off, no-eval: off  */
+/* global $, aleab, sleep           */
 
 const GITHUB_TAG = 'v1.0.5';
 const GITHUB_RAW_BASEURL = `https://raw.githubusercontent.com/aleab/userscripts-collection/${GITHUB_TAG}/warframe`;
