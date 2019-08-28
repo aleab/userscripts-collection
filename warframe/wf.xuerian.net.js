@@ -23,19 +23,20 @@
     WfXuerianNet.prototype.doStuff = async function() {
         console.log(`WARFRAME | wf.xuerian.net: ${window.location.href}`);
 
-        _(this).relicParts = null;
-        _(this).relicSources = null;
-
         $('#content').css({ 'padding-top': '15px' });
 
         let currentUrl = window.location.href;
         if (REGEX_WISHLIST_PAGE.test(currentUrl)) {
             await wishlist.miscTweaks(this);
         } else if (REGEX_RELIQUARY_PAGE.test(currentUrl)) {
-            reliquary.getReliquaryPartsAndSources(this);
+            await reliquary.waitForAll();
+            await reliquary.getReliquaryPartsAndSources(this);
 
-            await reliquary.addRewardsSearchField(this);
-            await reliquary.addRewardsOptions(this);
+            await reliquary.clean(this);
+            await reliquary.tweakRelicsLegendDiv(this);
+
+            await reliquary.addRelicsSearchField(this);
+            await reliquary.addRelicsOptions(this);
             await reliquary.addSourcesSearchField(this);
 
             await reliquary.miscTweaks(this);
@@ -62,6 +63,28 @@
     };
 
     const reliquary = {
+        waitForAll: async function() {
+            await waitFor('#content > div.reliquary > .relics.box-container');
+            await waitFor('#content > div.reliquary > .relics.box-container > .relic.box > .rewards');
+
+            await waitFor('#content > div.reliquary > .sources.box-container');
+            await waitFor('#content > div.reliquary > .sources.box-container > .source.box > .rotations');
+        },
+
+        clean: async function(self) {
+            _(self).relicParts = null;
+            _(self).relicSources = null;
+
+            $('#aleab-relic-search').remove();
+            $('#aleab-relic-options').remove();
+
+            let jRow1 = $('#aleab-relics-legend-row1');
+            jRow1.parent().append(jRow1.children().clone());
+            jRow1.remove();
+
+            $('#aleab-sources-legend').remove();
+        },
+
         getReliquaryPartsAndSources: async function(self) {
             await waitFor('.relics.box-container > .relic.box > .rewards');
             _(self).relicParts = $('.relics.box-container > .relic.box > .rewards > .reward.wanted > .name');
@@ -71,22 +94,23 @@
         },
 
         // REWARDS
-        addRewardsSearchField: async function(self) {
-            await waitFor('#content > div.reliquary > .relics.box-container');
-            $('#aleab-part-search').remove();
+        tweakRelicsLegendDiv: async function(self) {
+            let jRelicsContainer = $('#content > div.reliquary > .relics.box-container');
+            let legend = jRelicsContainer.prevAll().filter('.legend')[0];
 
-            let legend = $('#content > div.reliquary > .relics.box-container').prevAll().filter('.legend')[0];
-            $(legend).css({ 'margin-bottom': '4px' });
+            $(legend).css({ 'margin-bottom': '4px', 'flex-direction': 'column' });
 
-            let div = document.createElement('div');
-            $(div).addClass('wanker').attr('id', 'aleab-part-search');
-            $(div).appendTo(legend);
+            $(document.createElement('div'))
+              .attr('id', 'aleab-relics-legend-row1')
+              .css({ 'display': 'flex', 'flex-wrap': 'wrap' }).append(
+                $(legend).children().remove()
+            ).appendTo(legend);
+        },
 
-            let input = document.createElement('input');
-            $(input).attr('type', 'text').attr('placeholder', 'Search...').css({ 'border-radius': '5px', 'padding': '1px 3px' });
-            $(input).focus(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '0 0 0pt 1pt #4265A5' }))
-                    .blur(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '' }));
-            $(input).keyup(ev => {
+        addRelicsSearchField: async function(self) {
+            $('#aleab-relic-search').remove();
+
+            let onKeyup = ev => {
                 let SETTINGS = _(self).Settings;
                 let relicParts = _(self).relicParts;
 
@@ -120,30 +144,23 @@
                     $(matchingParts[i]).closest('.relic.box').addClass('aleab-filter-show');
                 }
                 relicParts.closest('.relic.box:not(.aleab-filter-show)').css({ 'display': 'none' });
-            });
-            $(input).appendTo(div);
+            };
+
+            let legend = $('#content > div.reliquary > .relics.box-container').prevAll().filter('.legend')[0];
+            $(document.createElement('div')).addClass('wanker').attr('id', 'aleab-relic-search').append(
+                $(document.createElement('input')).attr('type', 'text').attr('placeholder', 'Search...')
+                  .css({ 'border-radius': '5px', 'padding': '1px 3px' })
+                  .focus(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '0 0 0pt 1pt #4265A5' }))
+                  .blur(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '' }))
+                  .keyup(onKeyup)
+            ).appendTo($(legend).find('div')[0]);
         },
 
-        addRewardsOptions: async function(self) {
-            await waitFor('#content > div.reliquary > .legend');
-            $('#aleab-options').remove();
+        addRelicsOptions: async function(self) {
+            $('#aleab-relic-options').remove();
 
-            let wrapper = document.createElement('div');
-            $(wrapper).attr('id', 'aleab-options').insertAfter('#content > div.reliquary > .legend');
-
-            $(document.createElement('div')).append(
-                $(document.createElement('label'))
-                  .css({ 'display': 'inline-block', 'text-indent': '22px', 'font-size': '0.95em' }).append(
-                      $(document.createElement('input')).attr('id', 'aleab-cb-hideVaulted').attr('type', 'checkbox')
-                        .css({ 'vertical-align': 'middle' })
-                ).append(
-                    $(document.createElement('span')).append('Hide Vaulted')
-                )
-            ).appendTo(wrapper);
-
-            // Hide Vaulted
             let hideVaulted = checked => {
-                let cbHideVaulted = $(wrapper).find('#aleab-cb-hideVaulted');
+                let cbHideVaulted = $('#aleab-relic-options').find('#aleab-cb-hideVaulted');
                 if (checked) {
                     cbHideVaulted.attr('checked', 'checked');
                     $('.relics.box-container > .relic.vaulted').css({ 'display': 'none' });
@@ -153,19 +170,28 @@
                 }
                 window.localStorage.setItem('aleab-reliquary_hideVaulted', checked);
             };
-            $(wrapper).find('#aleab-cb-hideVaulted').change(ev => hideVaulted(ev.currentTarget.checked));
 
-            await waitFor('#content > div.reliquary > .relics.box-container');
-            await waitFor('#content > div.reliquary > .relics.box-container > .relic.vaulted', 1000);
+            let legend = $('#content > div.reliquary > .relics.box-container').prevAll().filter('.legend')[0];
+            $(document.createElement('div')).attr('id', 'aleab-relic-options').append(
+                $(document.createElement('div')).attr('id', 'aleab-opt-hideVaulted').append(
+                    $(document.createElement('label')).css({ 'display': 'inline-block', 'text-indent': '22px', 'font-size': '0.95em' }).append(
+                        $(document.createElement('input')).attr('type', 'checkbox')  // [Hide Vaulted]
+                          .css({ 'vertical-align': 'middle' })
+                          .change(ev => hideVaulted(ev.currentTarget.checked))
+                    ).append(
+                        $(document.createElement('span')).append('Hide Vaulted')
+                    )
+                )
+            ).appendTo(legend);
+
             hideVaulted(window.localStorage.getItem('aleab-reliquary_hideVaulted') === 'true');
         },
 
         // SOURCES
         addSourcesSearchField: async function(self) {
-            await waitFor('#content > div.reliquary > .sources.box-container');
             $('#aleab-sources-legend').remove();
 
-            let inputKeyup = ev => {
+            let onKeyup = ev => {
                 let SETTINGS = _(self).Settings;
                 let relicSources = _(self).relicSources;
 
@@ -198,32 +224,38 @@
                 relicSources.closest('.source.box:not(.aleab-filter-show)').css({ 'display': 'none' });
             };
 
+            let jSourcesContainer = $('#content > div.reliquary > .sources.box-container');
             $(document.createElement('div')).addClass('legend').attr('id', 'aleab-sources-legend').css({ 'margin-bottom': '4px' }).append(
-                $(document.createElement('div')).addClass('wanker').append(
-                    $(document.createElement('div')).addClass('name').append('Sources')
-                )
+                $(document.createElement('div')).addClass('wanker')
+                  .append($(document.createElement('div')).addClass('icon').append('<div class="pip c1" />'))
+                  .append($(document.createElement('div')).addClass('name').append('Sources'))
             ).append(
-                $(document.createElement('div')).addClass('wanker').append(
+                $(document.createElement('div')).addClass('wanker').attr('id', 'aleab-sources-search').append(
                     $(document.createElement('input')).attr('type', 'text').attr('placeholder', 'Search...')
                       .css({ 'border-radius': '5px', 'padding': '1px 3px' })
                       .focus(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '0 0 0pt 1pt #4265A5' }))
                       .blur(ev => $(ev.currentTarget).css({ 'outline': 'unset', 'box-shadow': '' }))
-                      .keyup(inputKeyup)
+                      .keyup(onKeyup)
                 )
-            ).insertBefore('#content > div.reliquary > .sources.box-container');
+            ).insertBefore(jSourcesContainer);
         },
 
         miscTweaks: async function(self) {
             let SETTINGS = _(self).Settings;
-            
+
+            // Change '.reliquary .source.active-fissure' class
+            $('head').append(
+                $(document.createElement('style')).attr('type', 'text/css').append(
+                    '.reliquary .source.active-fissure { box-shadow: 0px 0px 8px 1px var(--orokin); }'
+                )
+            );
+
             // Use different text color for each relic rarity
-            await waitFor('.relics.box-container')
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("25-17%"))').css('color', SETTINGS.rarityColors[0]);
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("11-20%"))').css('color', SETTINGS.rarityColors[1]);
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("2-10%"))').css('color', SETTINGS.rarityColors[2]);
 
             // Hide inactive sources
-            await waitFor('.sources.box-container')
             $('.sources.box-container > .source.bounty:not(.active-bounty)').css({ 'display': 'none' });
             window.localStorage.setItem('aleab-reliquary_hideInactiveSources', true);
         }
