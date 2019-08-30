@@ -23,18 +23,24 @@ const GITHUB_RAW_BASEURL = `https://raw.githubusercontent.com/aleab/userscripts-
 
 aleab.waitForModules().then(() => {
     $(document).ready(async function() {
-        const WarframeMarket = await fetch(`${GITHUB_RAW_BASEURL}/warframe.market.js`).then(d => d.text()).then(d => new (eval(d)));
-        const Tennoware = await fetch(`${GITHUB_RAW_BASEURL}/tennoware.com.js`).then(d => d.text()).then(d => new (eval(d)));
-        const WfXuerianNet = await fetch(`${GITHUB_RAW_BASEURL}/wf.xuerian.net.js`).then(d => d.text()).then(d => new (eval(d)));
+        const urls = [
+            [ '^https://warframe.market/.*$', `${GITHUB_RAW_BASEURL}/warframe.market.js` ],
+            [ '^https://tennoware.com/.*$', `${GITHUB_RAW_BASEURL}/tennoware.com.js` ],
+            [ '^https://wf.xuerian.net/.*$', `${GITHUB_RAW_BASEURL}/wf.xuerian.net.js` ]
+        ];
 
         let doStuff = async function() {
+            let o = null;
             let currentUrl = window.location.href;
-            if (RegExp('^https://warframe.market/.*$').test(currentUrl))
-                await WarframeMarket.doStuff();
-            else if (RegExp('^https://tennoware.com/.*$').test(currentUrl))
-                await Tennoware.doStuff();
-            else if (RegExp('^https://wf.xuerian.net/.*$').test(currentUrl))
-                await WfXuerianNet.doStuff();
+            for (let i = 0; i < urls.length; ++i) {
+                if (RegExp(urls[i][0]).test(currentUrl)) {
+                    o = await fetch(urls[i][1]).then(d => d.text()).then(d => new (eval(d)));
+                    break;
+                }
+            }
+
+            if (o)
+                await o.doStuff();
         };
 
         aleab.setPageChangeEvent(async function() {
