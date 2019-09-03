@@ -365,7 +365,6 @@
                 ' * =========== */'
             ))
             .append(S(
-                '.reliquary { margin-top: -12px; }',
                 '.reliquary > .legend {',
                 '    margin-bottom: 4px;',
                 '    flex-direction: column;',
@@ -384,6 +383,8 @@
                 '.reliquary .source.active-fissure { box-shadow: 0px 0px 8px 1px var(--orokin); }'
             ))
             .appendTo(document.head);
+
+            $('header:has(#tokeninfo:not(.hidden)) ~ #content > .reliquary.active').css({ 'margin-top': '-12px' });
     }
 
     return WfXuerianNet;
