@@ -23,7 +23,7 @@
             await mybuilds.prettifyMyBuildsPageLayout(this);
         } else if (REGEX_BUILD_PAGE.test(currentUrl)) {
             await build.addCopyDamageValuesButton(this);
-            await build.tweakMoaPage(this);
+            await build.tweakCompanionsPage(this);
         }
 
         await miscTweaks(this);
@@ -152,14 +152,19 @@
             });
         },
 
-        tweakMoaPage: async function(self) {
-            if (REGEX_BUILD_PAGE.exec(window.location.href)[1] !== 'moas')
-                return;
+        tweakCompanionsPage: async function(self) {
+            switch (REGEX_BUILD_PAGE.exec(window.location.href)[1]) {
+                case 'beasts':
+                case 'sentinels':
+                case 'moas':
+                    await waitFor('.modding-screen > .mod-stack');
+                    $('.modding-screen > .mod-stack').css({ 'width': '825px' });
+                    $('.modding-screen > .mod-stack > .special-modding').css({ 'max-width': '805px' });
+                    $('.modding-screen > .mod-stack > .slots-wrapper > .slots').css({ 'max-width': '805px' });
+                    break;
 
-            await waitFor('.modding-screen > .mod-stack');
-            $('.modding-screen > .mod-stack').css({ 'width': '825px' });
-            $('.modding-screen > .mod-stack > .special-modding').css({ 'max-width': '805px' });
-            $('.modding-screen > .mod-stack > .slots-wrapper > .slots').css({ 'max-width': '805px' });
+                default: break;
+            }
         }
     };
 
