@@ -53,7 +53,10 @@
             await waitFor('.list.box-container');
 
             // Hide vaulted sets
-            $('.list.box-container > .set.vaulted').addClass('hidden');
+            if (!window.localStorage.getItem('aleab-wishlist_hideVaultedSets'))
+                window.localStorage.setItem('aleab-wishlist_hideVaultedSets', true);
+            if (window.localStorage.getItem('aleab-wishlist_hideVaultedSets') === 'true')
+                $('.list.box-container > .set.vaulted').addClass('hidden');
 
             // Tweak set name style
             $('.list.box-container > .set').css({ 'padding': '10px 12px' });
@@ -279,8 +282,10 @@
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("2-10%"))').addClass('rare');
 
             // Hide inactive sources
-            $('.sources.box-container > .source.bounty:not(.active-bounty)').addClass('hidden');
-            window.localStorage.setItem('aleab-reliquary_hideInactiveSources', true);
+            if (!window.localStorage.getItem('aleab-reliquary_hideInactiveSources'))
+                window.localStorage.setItem('aleab-reliquary_hideInactiveSources', true);
+            if (window.localStorage.getItem('aleab-reliquary_hideInactiveSources') === 'true')
+                $('.sources.box-container > .source.bounty:not(.active-bounty)').addClass('hidden');
         }
     };
 
