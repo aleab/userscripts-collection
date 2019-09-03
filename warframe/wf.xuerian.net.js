@@ -27,6 +27,7 @@
 
         let currentUrl = window.location.href;
         if (REGEX_WISHLIST_PAGE.test(currentUrl)) {
+            await wishlist.addOptions(this);
             await wishlist.miscTweaks(this);
         } else if (REGEX_RELIQUARY_PAGE.test(currentUrl)) {
             await reliquary.waitForAll();
@@ -41,6 +42,7 @@
 
             await reliquary.miscTweaks(this);
         }
+        addCustomStyles(this);
     };
 
 
@@ -49,14 +51,41 @@
     // ===================
 
     const wishlist = {
+        addOptions: async function(self) {
+            $('div.wishlist .aleab-options').remove();
+
+            let hideVaulted = checked => {
+                let cbHideVaulted = $('div.wishlist.active .aleab-options > #aleab-opt-hideVaultedSets input[type="checkbox"]');
+                if (checked) {
+                    cbHideVaulted.attr('checked', 'checked');
+                    $('.list.box-container > .set.vaulted').addClass('hidden');
+                } else {
+                    cbHideVaulted.removeAttr('checked');
+                    $('.list.box-container > .set.vaulted').removeClass('hidden');
+                }
+                window.localStorage.setItem('aleab-wishlist_hideVaultedSets', checked);
+            };
+
+            let saveBtn = $('#content > div.wishlist.active > form input.save[type="button"]')[0];
+            $('div.wishlist > form > .legend').remove();
+            $(document.createElement('div')).addClass('legend').append(saveBtn).append(
+                $(document.createElement('div')).addClass('aleab-options').append(
+                    $(document.createElement('div')).attr('id', 'aleab-opt-hideVaultedSets').append(
+                        $(document.createElement('label')).append(
+                            $(document.createElement('input')).attr('type', 'checkbox')  // [Hide Vaulted]
+                              .change(ev => hideVaulted(ev.currentTarget.checked))
+                        ).append(
+                            $(document.createElement('span')).append('Hide Vaulted')
+                        )
+                    )
+                )
+            ).prependTo('#content > div.wishlist.active > form');
+
+            hideVaulted(window.localStorage.getItem('aleab-wishlist_hideVaultedSets') === 'true');
+        },
+
         miscTweaks: async function(self) {
             await waitFor('.list.box-container');
-
-            // Hide vaulted sets
-            if (!window.localStorage.getItem('aleab-wishlist_hideVaultedSets'))
-                window.localStorage.setItem('aleab-wishlist_hideVaultedSets', true);
-            if (window.localStorage.getItem('aleab-wishlist_hideVaultedSets') === 'true')
-                $('.list.box-container > .set.vaulted').addClass('hidden');
 
             // Tweak set name style
             $('.list.box-container > .set').css({ 'padding': '10px 12px' });
@@ -67,11 +96,11 @@
 
     const reliquary = {
         waitForAll: async function() {
-            await waitFor('#content > div.reliquary > .relics.box-container');
-            await waitFor('#content > div.reliquary > .relics.box-container > .relic.box > .rewards');
+            await waitFor('#content > div.reliquary.active > .relics.box-container');
+            await waitFor('#content > div.reliquary.active > .relics.box-container > .relic.box > .rewards');
 
-            await waitFor('#content > div.reliquary > .sources.box-container');
-            await waitFor('#content > div.reliquary > .sources.box-container > .source.box > .rotations');
+            await waitFor('#content > div.reliquary.active > .sources.box-container');
+            await waitFor('#content > div.reliquary.active > .sources.box-container > .source.box > .rotations');
         },
 
         clean: async function(self) {
@@ -100,7 +129,7 @@
 
         // REWARDS
         tweakRelicsLegendDiv: async function(self) {
-            let jRelicsContainer = $('#content > div.reliquary > .relics.box-container');
+            let jRelicsContainer = $('#content > div.reliquary.active > .relics.box-container');
             let legend = jRelicsContainer.prevAll().filter('.legend')[0];
 
             $(legend).css({ 'flex-direction': 'column' });
@@ -149,7 +178,7 @@
                 relicParts.closest('.relic.box:not(.aleab-filter-show)').addClass('hidden');
             };
 
-            let legend = $('#content > div.reliquary > .relics.box-container').prevAll().filter('.legend')[0];
+            let legend = $('#content > div.reliquary.active > .relics.box-container').prevAll().filter('.legend')[0];
             $(document.createElement('div')).attr('id', 'aleab-relic-search').addClass('wanker').addClass('aleab-search').append(
                 $(document.createElement('input')).attr('type', 'text').attr('placeholder', 'Search...').keyup(onKeyup)
             ).appendTo($(legend).find('div')[0]);
@@ -159,7 +188,7 @@
             $('#aleab-relic-options').remove();
 
             let hideVaulted = checked => {
-                let cbHideVaulted = $('#aleab-relic-options').find('#aleab-opt-hideVaulted input[type="checkbox"]');
+                let cbHideVaulted = $('div.reliquary.active .aleab-options > #aleab-opt-hideVaultedRelics input[type="checkbox"]');
                 if (checked) {
                     cbHideVaulted.attr('checked', 'checked');
                     $('.relics.box-container > .relic.vaulted').addClass('hidden');
@@ -170,9 +199,9 @@
                 window.localStorage.setItem('aleab-reliquary_hideVaulted', checked);
             };
 
-            let legend = $('#content > div.reliquary > .relics.box-container').prevAll().filter('.legend')[0];
-            $(document.createElement('div')).attr('id', 'aleab-relic-options').append(
-                $(document.createElement('div')).attr('id', 'aleab-opt-hideVaulted').append(
+            let legend = $('#content > div.reliquary.active > .relics.box-container').prevAll().filter('.legend')[0];
+            $(document.createElement('div')).addClass('aleab-options').append(
+                $(document.createElement('div')).attr('id', 'aleab-opt-hideVaultedRelics').append(
                     $(document.createElement('label')).append(
                         $(document.createElement('input')).attr('type', 'checkbox')  // [Hide Vaulted]
                           .change(ev => hideVaulted(ev.currentTarget.checked))
@@ -222,7 +251,7 @@
                 relicSources.closest('.source.box:not(.aleab-filter-show)').addClass('hidden');
             };
 
-            let jSourcesContainer = $('#content > div.reliquary > .sources.box-container');
+            let jSourcesContainer = $('#content > div.reliquary.active > .sources.box-container');
             $(document.createElement('div')).addClass('legend').attr('id', 'aleab-sources-legend').append(
                 $(document.createElement('div')).addClass('wanker')
                   .append($(document.createElement('div')).addClass('icon').append('<div class="pip c1" />'))
@@ -237,45 +266,6 @@
         miscTweaks: async function(self) {
             let SETTINGS = _(self).Settings;
 
-            // Custom Styles
-            let S = function() {
-                let str = '';
-                for (let i = 0; i < arguments.length; ++i)
-                    str += (arguments[i] ? arguments[i] : '') + '\n';
-                return str + '\n';
-            };
-
-            $(document.createElement('style')).attr('id', 'aleab-styles').attr('type', 'text/css')
-                .append(S(
-                    '.reliquary > .legend { margin-bottom: 4px; }'
-                ))
-                .append(S(
-                    '.reliquary .box .reward.common { color: #B87333 !important; }',
-                    '.reliquary .box .reward.uncommon { color: #C0C0C0 !important; }',
-                    '.reliquary .box .reward.rare { color: #E2C012 !important; }',
-                ))
-                .append(S(
-                    '.aleab-search > input {',
-                    '    border-radius: 5px;',
-                    '    padding: 1px 3px;',
-                    '    outline: unset;',
-                    '}',
-                    '.aleab-search > input:focus { box-shadow: 0px 0px 3px 2px #4265A5; }'
-                ))
-                .append(S(
-                    '#aleab-relic-options { font-size: 0.95em; }',
-                    '#aleab-relic-options label { display: inline-block; text-indent: 22px; }',
-                    '#aleab-relic-options label > input { vertical-align: middle; }'
-                ))
-                .append(S(
-                    '.reliquary .box:hover .details {',
-                    '    box-shadow: 0px 0px 8px 1px var(--border-faint);',
-                    '}',
-                    '.reliquary .source.active-bounty { box-shadow: 0px 0px 8px 1px var(--bounty); }',
-                    '.reliquary .source.active-fissure { box-shadow: 0px 0px 8px 1px var(--orokin); }'
-                ))
-                .appendTo(document.head);
-
             // Use different text color for each relic rarity
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("25-17%"))').addClass('common');
             $('.relics.box-container > .relic.box .reward:has(.chance:contains("11-20%"))').addClass('uncommon');
@@ -288,6 +278,77 @@
                 $('.sources.box-container > .source.bounty:not(.active-bounty)').addClass('hidden');
         }
     };
+
+    const addCustomStyles = function() {
+        // Custom Styles
+        let S = function() {
+            let str = '';
+            for (let i = 0; i < arguments.length; ++i)
+                str += (arguments[i] ? arguments[i] : '') + '\n';
+            return str + '\n';
+        };
+
+        $('#aleab-styles').remove();
+        $(document.createElement('style')).attr('id', 'aleab-styles').attr('type', 'text/css')
+            .append(S(
+                '/* ======= *',
+                ' *  STUFF  *',
+                ' * ======= */'
+            ))
+            .append(S(
+                '.aleab-options { font-size: 0.95em; }',
+                '.aleab-options label { display: inline-block; text-indent: 22px; }',
+                '.aleab-options label > input { vertical-align: middle; }'
+            ))
+            .append(S(
+                '.aleab-search > input {',
+                '    border-radius: 5px;',
+                '    padding: 1px 3px;',
+                '    outline: unset;',
+                '}',
+                '.aleab-search > input:focus { box-shadow: 0px 0px 3px 2px #4265A5; }'
+            ))
+            .append(S('',
+                '/* ========== *',
+                ' *  WISHLIST  *',
+                ' * ========== */'
+            ))
+            .append(S(
+                '.wishlist > form { margin-top: -12px; }',
+                '.wishlist > form > .legend { margin-bottom: 4px; }',
+                '.wishlist > form > .legend > input.save[type="button"] {',
+                '    font-size: 1.2em;',
+                '    margin: 0px 0px 3px 4px;',
+                '    width: unset;',
+                '    max-width: unset;',
+                '    padding: 0px 15px;',
+                '}'
+            ))
+            .append(S(
+                '.wishlist .aleab-options label { display: inline-block; text-indent: 16px; }'
+            ))
+            .append(S('',
+                '/* =========== *',
+                ' *  RELIQUARY  *',
+                ' * =========== */'
+            ))
+            .append(S(
+                '.reliquary > .legend { margin-bottom: 4px; }'
+            ))
+            .append(S(
+                '.reliquary .box .reward.common { color: #B87333 !important; }',
+                '.reliquary .box .reward.uncommon { color: #C0C0C0 !important; }',
+                '.reliquary .box .reward.rare { color: #E2C012 !important; }',
+            ))
+            .append(S(
+                '.reliquary .box:hover .details {',
+                '    box-shadow: 0px 0px 8px 1px var(--border-faint);',
+                '}',
+                '.reliquary .source.active-bounty { box-shadow: 0px 0px 8px 1px var(--bounty); }',
+                '.reliquary .source.active-fissure { box-shadow: 0px 0px 8px 1px var(--orokin); }'
+            ))
+            .appendTo(document.head);
+    }
 
     return WfXuerianNet;
 }());
