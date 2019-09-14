@@ -1,6 +1,8 @@
 (function() {
     const REGEX_MYBUILDS_PAGE = RegExp('^https://tennoware.com/mybuilds/?$');
     const REGEX_BUILD_PAGE = RegExp('^https://tennoware.com/(warframes|primaryweapons|secondaryweapons|meleeweapons|archguns-land|beasts|sentinels|sentinelsweapons|archwings|archguns-space|archmelee|zaws|kitguns|moas)/.+$');
+    
+    const MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
 
     let map = new WeakMap();
     let _ = function(obj) {
@@ -11,10 +13,16 @@
 
     function Tennoware() {
         _(this).weaponTypeToNameMap = {};
+        _(this).modSlotsObserver = null;
     }
 
     Tennoware.prototype.doStuff = async function() {
         console.log(`WARFRAME | tennoware.com: ${window.location.href}`);
+
+        if (_(this).modSlotsObserver) {
+            _(this).modSlotsObserver.disconnect();
+            _(this).modSlotsObserver = null;
+        }
 
         await populateWeaponTypeToNameMap(this);
 
@@ -23,6 +31,7 @@
             await mybuilds.prettifyMyBuildsPageLayout(this);
         } else if (REGEX_BUILD_PAGE.test(currentUrl)) {
             await build.addCopyDamageValuesButton(this);
+            await build.addLinksToModsWikiPages(this);
             await build.tweakCompanionsPage(this);
         }
 
@@ -150,6 +159,62 @@
                     text += (damageValues[i] ? damageValues[i] : '0') + '\n';
                 navigator.clipboard.writeText(text);
             });
+        },
+
+        addLinksToModsWikiPages: async function(self) {
+            await waitFor('.mod-stack > .slots-wrapper > .slots > .handler-wrapper');
+            let slots = $('.mod-stack > .slots-wrapper > .slots > .handler-wrapper');
+
+            let addLinkButton = (jWrapper, modName) => {
+                jWrapper.find('.aleab-modinfo-button').remove();
+                $(document.createElement('a')).addClass([ 'aleab-modinfo-button' ])
+                  .attr({ 'href': `https://warframe.fandom.com/wiki/${modName}`, 'target': '_blank' }).css({ 'color': 'inherit' }).append(
+                    $(document.createElement('div')).addClass([ 'hover-button', $(jWrapper[0].children[0].classList).last()[0] ]).append('\u2139')
+                ).appendTo(jWrapper[0]);
+            };
+
+            _(self).modSlotsObserver = new MutationObserver(async function(mutations, observer) {
+                if (!mutations || mutations.length === 0)
+                    return;
+
+                for (let i = 0; i < mutations.length; ++i) {
+                    let m = mutations[i];
+                    switch (m.type) {
+                        case 'childList':
+                            if (m.target.classList.contains('slot-wrapper') && m.addedNodes.length > 0) {
+                                // Added new mod in an empty slot
+                                let modName = $(m.addedNodes[0]).find('.mod > .mod-info-wrapper > .mod-name').text();
+                                let hoverButtons = $(m.addedNodes[0]).find('.hover-buttons');
+                                addLinkButton(hoverButtons, modName);
+                            }
+                            break;
+
+                        case 'attributes':
+                            if (m.target.classList.contains('mod-image')) {
+                                // Swapped mod
+                                let modName = $(m.target.parentNode).find('.mod-info-wrapper > .mod-name').text();
+                                let hoverButtons = $(m.target.parentNode.parentNode).find('.hover-buttons');
+                                addLinkButton(hoverButtons, modName);
+                            }
+                            break;
+                    }
+                }
+            });
+            for (let i = 0; i < slots.length; ++i) {
+                let modWrapper = $(slots[i]).find('.slot-wrapper > .mod-card-wrapper');
+                if (modWrapper.length > 0) {
+                    let modName = modWrapper.find('.mod > .mod-info-wrapper > .mod-name').text();
+                    let hoverButtons = modWrapper.find('.hover-buttons');
+                    addLinkButton(hoverButtons, modName);
+                }
+
+                _(self).modSlotsObserver.observe(slots[i], {
+                    attributeOldValue: true,
+                    attributes: true,
+                    childList: true,
+                    subtree: true
+                });
+            }
         },
 
         tweakCompanionsPage: async function(self) {
