@@ -27,14 +27,16 @@
         }
 
         // Fetch sell orders
-        let item = REGEX_ITEMS_PAGE.exec(window.location.href)[1];
-        await fetch(`https://api.warframe.market/v1/items/${item}/orders`).then(data => data.json()).then(data => {
-            _(this).sellOrders = window.sellOrders = filterOrders(data.payload.orders);
-        });
+        if (REGEX_ITEMS_PAGE.test(window.location.href)) {
+            let item = REGEX_ITEMS_PAGE.exec(window.location.href)[1];
+            await fetch(`https://api.warframe.market/v1/items/${item}/orders`).then(data => data.json()).then(data => {
+                _(this).sellOrders = window.sellOrders = filterOrders(data.payload.orders);
+            });
 
-        await market.addPriceStatistics(this);
-        await market.observeOrderChanges(this);
-        market.addCustomCSS(this);
+            await market.addPriceStatistics(this);
+            await market.observeOrderChanges(this);
+            market.addCustomCSS(this);
+        }
     };
 
 
