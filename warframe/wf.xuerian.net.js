@@ -1,8 +1,17 @@
 (function() {
     const REGEX_WISHLIST_PAGE = RegExp('^https://wf.xuerian.net(/.+)?/?#wishlist$');
     const REGEX_RELIQUARY_PAGE = RegExp('^https://wf.xuerian.net(/.+)?/?#reliquary$');
-    
+
     const MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
+
+    const RelicType = {
+        None: 0,
+        Lith: 1 << 0,
+        Meso: 1 << 1,
+        Neo : 1 << 2,
+        Axi : 1 << 3,
+        All : (1 << 4) - 1
+    };
 
     let map = new WeakMap();
     let _ = function(obj) {
@@ -17,26 +26,31 @@
             rarityColors: [ '#B87333', '#C0C0C0', '#E2C012' ]
         };
 
-        _(this).relicParts = null;
-        _(this).relicSources = null;
+        _(this).reliquary = {
+            relicParts: null,
+            relicSources: null,
+            relicPartsObserver: null,
+            relicSourcesObserver: null,
 
-        _(this).relicsObserver = null;
-        _(this).sourcesObserver = null;
+            relicSearchFilter: '',
+            relicTypeFilter: RelicType.All
+        };
 
         Object.defineProperty(this, 'Settings', { get: () => _(this).Settings });
+        Object.defineProperty(this, 'reliquary', { get: () => _(this).reliquary });
     }
 
     WfXuerianNet.prototype.doStuff = async function() {
         console.log(`WARFRAME | wf.xuerian.net: ${window.location.href}`);
         $('#content').css({ 'padding-top': '15px' });
 
-        if (_(this).relicsObserver) {
-            _(this).relicsObserver.disconnect();
-            _(this).relicsObserver = null;
+        if (_(this).reliquary.relicPartsObserver) {
+            _(this).reliquary.relicPartsObserver.disconnect();
+            _(this).reliquary.relicPartsObserver = null;
         }
-        if (_(this).sourcesObserver) {
-            _(this).sourcesObserver.disconnect();
-            _(this).sourcesObserver = null;
+        if (_(this).reliquary.relicSourcesObserver) {
+            _(this).reliquary.relicSourcesObserver.disconnect();
+            _(this).reliquary.relicSourcesObserver = null;
         }
 
         let currentUrl = window.location.href;
@@ -69,6 +83,12 @@
     // ===================
     //  PRIVATE FUNCTIONS
     // ===================
+
+    const addOrRemoveFlag= function(condition, value, flag) {
+        if (condition)
+            return value | flag;
+        return value & ~flag;
+    };
 
     const wishlist = {
         addOptions: async function(self) {
@@ -124,8 +144,8 @@
         },
 
         clean: async function(self) {
-            _(self).relicParts = null;
-            _(self).relicSources = null;
+            _(self).reliquary.relicParts = null;
+            _(self).reliquary.relicSources = null;
 
             $('#aleab-styles').remove();
 
@@ -141,10 +161,10 @@
 
         getReliquaryPartsAndSources: async function(self) {
             await waitFor('.relics.box-container > .relic.box > .rewards');
-            _(self).relicParts = $('.relics.box-container > .relic.box > .rewards > .reward.wanted > .name');
+            _(self).reliquary.relicParts = $('.relics.box-container > .relic.box > .rewards > .reward.wanted > .name');
 
             await waitFor('.sources.box-container > .source.box > .rotations');
-            _(self).relicSources = $('.sources.box-container > .source.box > .rotations span[relic]');
+            _(self).reliquary.relicSources = $('.sources.box-container > .source.box > .rotations span[relic]');
         },
 
         miscTweaks: async function(self) {
@@ -172,18 +192,23 @@
             window.localStorage.setItem('aleab-reliquary_hideVaulted', checked);
         },
 
-        applyRelicsSearchFilter: function(filter, self) {
-            let SETTINGS = _(self).Settings;
-            let relicParts = _(self).relicParts;
+        getRelicsTypeFilterStatus: function() {
+            let checkboxes = $('#aleab-opt-relicTypeFilter input[type="checkbox"]');
+            let filter = RelicType.None;
+            for (let i = 0; i < checkboxes.length; ++i) {
+                filter |= checkboxes[i].checked ? checkboxes[i].getAttribute('data') : 0;
+            }
+            return filter;
+        },
 
-            if (!relicParts || relicParts.length == 0)
-                return;
+        applyRelicsFilters: function(searchFilter, typeFilter, self) {
+            if (searchFilter !== undefined)
+                _(self).reliquary.relicSearchFilter = searchFilter;
+            if (typeFilter >= 0)
+                _(self).reliquary.relicTypeFilter = typeFilter;
 
-            if (!filter)
-                filter = '';
-            let regex = RegExp(`(${filter.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})`, 'gi');
-
-            // Clear highlighted text
+            // Clear filters
+            let relicParts = _(self).reliquary.relicParts;
             for (let i = 0; i < relicParts.length; ++i) {
                 relicParts[i].innerHTML = relicParts[i].innerText;
             }
@@ -191,9 +216,20 @@
             relicParts.closest(`.relic.box:not(.aleab-filter-show)${exceptVaulted}`).removeClass('hidden');
             relicParts.closest('.relic.box.aleab-filter-show').removeClass('aleab-filter-show');
 
-            // Highlight text
+            reliquary.applyRelicsSearchFilter(_(self).reliquary.relicSearchFilter, self);
+            reliquary.applyRelicsTypeFilter(_(self).reliquary.relicTypeFilter, self);
+        },
+        applyRelicsSearchFilter: function(filter, self) {
+            let SETTINGS = _(self).Settings;
+            let relicParts = _(self).reliquary.relicParts;
+
+            if (!relicParts || relicParts.length == 0)
+                return;
             if (!filter || filter.length == 0)
                 return;
+
+            // Highlight text
+            let regex = RegExp(`(${filter.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})`, 'gi');
 
             let matchingParts = $.grep(relicParts, (e, i) => e.innerText.toLowerCase().indexOf(filter.toLowerCase()) > -1);
             for (let i = 0; i < matchingParts.length; ++i) {
@@ -207,6 +243,17 @@
                 $(matchingParts[i]).closest('.relic.box').addClass('aleab-filter-show');
             }
             relicParts.closest('.relic.box:not(.aleab-filter-show)').addClass('hidden');
+        },
+        applyRelicsTypeFilter: function(filter, self) {
+            let relics = $('.reliquary > .relics.box-container > .relic.box:not(.hidden)');
+            for (let i = 0; i < relics.length; ++i) {
+                let type = $(relics[i]).find('.header > .name').text().split(' ')[0];
+                if (RelicType[type] & filter) {
+                    $(relics[i]).addClass('aleab-filter-show');
+                } else {
+                    let box = $(relics[i]).removeClass('aleab-filter-show').addClass('hidden');
+                }
+            }
         },
         // ------
 
@@ -225,7 +272,7 @@
 
             let legend = $('div.reliquary #aleab-relics-legend.legend')[0];
             $(document.createElement('div')).attr('id', 'aleab-relic-search').addClass('wanker').addClass('aleab-search').append(
-                $(document.createElement('input')).attr('type', 'text').attr('placeholder', 'Search...').keyup(ev => reliquary.applyRelicsSearchFilter(ev.currentTarget.value, self))
+                $(document.createElement('input')).attr('type', 'text').attr('placeholder', 'Search...').keyup(ev => reliquary.applyRelicsFilters(ev.currentTarget.value, undefined, self))
             ).appendTo($(legend).find('div')[0]);
         },
 
@@ -242,13 +289,49 @@
                         $(document.createElement('span')).append('Hide Vaulted')
                     )
                 )
+            ).append(
+                $(document.createElement('div')).attr('id', 'aleab-opt-relicTypeFilter').append(
+                    $(document.createElement('table')).append(
+                        $(document.createElement('tr')).append(
+                            $(document.createElement('td')).append(
+                                $(document.createElement('label')).append(
+                                    $(document.createElement('input')).attr({ 'type': 'checkbox', 'data': `${RelicType.Lith}`, 'checked': '' })
+                                      .change(ev => reliquary.applyRelicsFilters(undefined, reliquary.getRelicsTypeFilterStatus(), self))
+                                ).append($(document.createElement('span')).append('Lith'))
+                            )
+                        ).append(
+                            $(document.createElement('td')).append(
+                                $(document.createElement('label')).append(
+                                    $(document.createElement('input')).attr({ 'type': 'checkbox', 'data': `${RelicType.Meso}`, 'checked': '' })
+                                      .change(ev => reliquary.applyRelicsFilters(undefined, reliquary.getRelicsTypeFilterStatus(), self))
+                                ).append($(document.createElement('span')).append('Meso'))
+                            )
+                        )
+                    ).append(
+                        $(document.createElement('tr')).append(
+                            $(document.createElement('td')).append(
+                                $(document.createElement('label')).append(
+                                    $(document.createElement('input')).attr({ 'type': 'checkbox', 'data': `${RelicType.Neo}`, 'checked': '' })
+                                      .change(ev => reliquary.applyRelicsFilters(undefined, reliquary.getRelicsTypeFilterStatus(), self))
+                                ).append($(document.createElement('span')).append('Neo'))
+                            )
+                        ).append(
+                            $(document.createElement('td')).append(
+                                $(document.createElement('label')).append(
+                                    $(document.createElement('input')).attr({ 'type': 'checkbox', 'data': `${RelicType.Axi}`, 'checked': '' })
+                                      .change(ev => reliquary.applyRelicsFilters(undefined, reliquary.getRelicsTypeFilterStatus(), self))
+                                ).append($(document.createElement('span')).append('Axi'))
+                            )
+                        )
+                    )
+                )
             ).appendTo(legend);
 
             reliquary.hideVaultedRelics(reliquary.shouldHideVaultedRelics());
         },
 
         observeRelicsChanges: async function(self) {
-            _(self).relicsObserver = new MutationObserver(async function(mutations, observer) {
+            _(self).reliquary.relicPartsObserver = new MutationObserver(async function(mutations, observer) {
                 if (!mutations || mutations.length === 0)
                     return;
 
@@ -273,7 +356,7 @@
                 }
             });
 
-            _(self).relicsObserver.observe($('div.reliquary > .relics.box-container')[0], { 
+            _(self).reliquary.relicPartsObserver.observe($('div.reliquary > .relics.box-container')[0], {
                 attributes: true,
                 attributeOldValue: true,
                 attributeFilter: [ 'class' ],
@@ -300,7 +383,7 @@
 
         applySourcesSearchFilter: function(filter, self) {
             let SETTINGS = _(self).Settings;
-            let relicSources = _(self).relicSources;
+            let relicSources = _(self).reliquary.relicSources;
 
             if (!relicSources || relicSources.length === 0)
                 return;
@@ -335,7 +418,7 @@
 
         addSourcesLegendDiv: async function(self) {
             $('#aleab-sources-legend').remove();
- 
+
             let jSourcesContainer = $('#content > div.reliquary.active > .sources.box-container');
             $(document.createElement('div')).attr('id', 'aleab-sources-legend').addClass('legend').append(
                 $(document.createElement('div')).attr('id', 'aleab-sources-legend-row1').addClass('legend').append(
@@ -373,7 +456,7 @@
         },
 
         observeSourcesChanges: async function(self) {
-            _(self).sourcesObserver = new MutationObserver(async function(mutations, observer) {
+            _(self).reliquary.relicSourcesObserver = new MutationObserver(async function(mutations, observer) {
                 if (!mutations || mutations.length === 0)
                     return;
 
@@ -399,7 +482,7 @@
                 }
             });
 
-            _(self).sourcesObserver.observe($('div.reliquary > .sources.box-container')[0], { 
+            _(self).reliquary.relicSourcesObserver.observe($('div.reliquary > .sources.box-container')[0], { 
                 attributes: true,
                 attributeOldValue: true,
                 attributeFilter: [ 'class' ],
@@ -426,9 +509,23 @@
                 ' * ======= */'
             ))
             .append(S(
-                '.aleab-options { font-size: 0.95em; }',
-                '.aleab-options label { display: inline-block; text-indent: 22px; }',
+                '.aleab-options {',
+                '    font-size: 0.95em;',
+                '    display: flex;',
+                '    flex-wrap: wrap;',
+                '    flex-direction: row;',
+                '}',
+                '.aleab-options > div { margin-right: 20px; }',
+                '.aleab-options *:not(td) > label { display: inline-block; text-indent: 22px; }',
                 '.aleab-options label > input { vertical-align: middle; }'
+            ))
+            .append(S(
+                '#aleab-opt-relicTypeFilter > table {',
+                '    border: #545454 solid 2px;',
+                '    border-radius: 6px;',
+                '    border-spacing: 4px 0px;',
+                '}',
+                '#aleab-opt-relicTypeFilter > table td > label > input { transform: scale(0.9); }'
             ))
             .append(S(
                 '.aleab-search { margin: 2px 0px; }',
