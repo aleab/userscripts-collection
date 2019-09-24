@@ -162,8 +162,9 @@
         },
 
         addLinksToModsWikiPages: async function(self) {
+            await waitFor('.mod-stack > .special-modding > .special-slots > .handler-wrapper');
             await waitFor('.mod-stack > .slots-wrapper > .slots > .handler-wrapper');
-            let slots = $('.mod-stack > .slots-wrapper > .slots > .handler-wrapper');
+            let slots = $('.mod-stack > .special-modding > .special-slots > .handler-wrapper, .mod-stack > .slots-wrapper > .slots > .handler-wrapper');
 
             let addLinkButton = (jWrapper, modName) => {
                 jWrapper.find('.aleab-modinfo-button').remove();
