@@ -35,8 +35,9 @@
 
             await market.addPriceStatistics(this);
             await market.observeOrderChanges(this);
-            market.addCustomCSS(this);
         }
+
+        misc.addCustomCSS(this);
     };
 
 
@@ -182,8 +183,10 @@
             _(self).ordersObserver.observe(rowsContainer[0], { childList: true });
 
             addCreationDate(rowsContainer.find('.order-row').toArray());
-        },
+        }
+    };
 
+    const misc = {
         addCustomCSS: function(self) {
             let S = function() {
                 let str = '';

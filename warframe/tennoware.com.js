@@ -31,7 +31,7 @@
             await mybuilds.prettifyMyBuildsPageLayout(this);
         } else if (REGEX_BUILD_PAGE.test(currentUrl)) {
             await build.addCopyDamageValuesButton(this);
-            await build.addLinksToModsWikiPages(this);
+            await build.addLinksToWiki(this);
             await build.tweakCompanionsPage(this);
         }
 
@@ -161,12 +161,23 @@
             });
         },
 
-        addLinksToModsWikiPages: async function(self) {
+        addLinksToWiki: async function(self) {
+            // Title
+            await waitFor('.main-view .top-title');
+
+            let title = $('.main-view .top-title > p')[0].innerText;
+            let href = (() => 'https://warframe.fandom.com/wiki/' + title.toLowerCase().replace(/\b\w/g, (m,i) => m.toUpperCase()).replace(/\s/g, '_'))();
+
+            $('.main-view .top-title').append(
+                $(document.createElement('a')).attr({ 'href': href, 'target': '_blank' }).css({ 'color': '#FFF' }).append(title)
+            ).find('> p').remove();
+
+            // Mods
             await waitFor('.mod-stack > .special-modding > .special-slots > .handler-wrapper');
             await waitFor('.mod-stack > .slots-wrapper > .slots > .handler-wrapper');
             let slots = $('.mod-stack > .special-modding > .special-slots > .handler-wrapper, .mod-stack > .slots-wrapper > .slots > .handler-wrapper');
 
-            let addLinkButton = (jWrapper, modName) => {
+            let addModLinkButton = (jWrapper, modName) => {
                 jWrapper.find('.aleab-modinfo-button').remove();
                 $(document.createElement('a')).addClass([ 'aleab-modinfo-button' ])
                   .attr({ 'href': `https://warframe.fandom.com/wiki/${modName}`, 'target': '_blank' }).css({ 'color': 'inherit' }).append(
@@ -186,7 +197,7 @@
                                 // Added new mod in an empty slot
                                 let modName = $(m.addedNodes[0]).find('.mod > .mod-info-wrapper > .mod-name').text();
                                 let hoverButtons = $(m.addedNodes[0]).find('.hover-buttons');
-                                addLinkButton(hoverButtons, modName);
+                                addModLinkButton(hoverButtons, modName);
                             }
                             break;
 
@@ -195,7 +206,7 @@
                                 // Swapped mod
                                 let modName = $(m.target.parentNode).find('.mod-info-wrapper > .mod-name').text();
                                 let hoverButtons = $(m.target.parentNode.parentNode).find('.hover-buttons');
-                                addLinkButton(hoverButtons, modName);
+                                addModLinkButton(hoverButtons, modName);
                             }
                             break;
                     }
@@ -206,7 +217,7 @@
                 if (modWrapper.length > 0) {
                     let modName = modWrapper.find('.mod > .mod-info-wrapper > .mod-name').text();
                     let hoverButtons = modWrapper.find('.hover-buttons');
-                    addLinkButton(hoverButtons, modName);
+                    addModLinkButton(hoverButtons, modName);
                 }
 
                 _(self).modSlotsObserver.observe(slots[i], {
