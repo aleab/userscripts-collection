@@ -1,5 +1,6 @@
 (function() {
     const REGEX_ITEMS_PAGE = RegExp('^https://warframe.market/items/(.+)$');
+    const REGEX_PROFILE_PAGE = RegExp('^https://warframe.market/profile/(.+)$');
 
     const REGION = 'en';
     const STATUS = 'ingame';
@@ -16,6 +17,7 @@
     function WarframeMarket() {
         _(this).sellOrders = null;
         _(this).ordersObserver = null;
+        _(this).profileSellOrdersObserver = null;
     }
 
     WarframeMarket.prototype.doStuff = async function() {
@@ -25,9 +27,14 @@
             _(this).ordersObserver.disconnect();
             _(this).ordersObserver = null;
         }
+        if (_(this).profileSellOrdersObserver) {
+            _(this).profileSellOrdersObserver.disconnect();
+            _(this).profileSellOrdersObserver = null;
+        }
 
-        // Fetch sell orders
-        if (REGEX_ITEMS_PAGE.test(window.location.href)) {
+        let currentUrl = window.location.href;
+        if (REGEX_ITEMS_PAGE.test(currentUrl)) {
+            // Fetch sell orders
             let item = REGEX_ITEMS_PAGE.exec(window.location.href)[1];
             await fetch(`https://api.warframe.market/v1/items/${item}/orders`).then(data => data.json()).then(data => {
                 _(this).sellOrders = window.sellOrders = filterOrders(data.payload.orders);
@@ -35,6 +42,11 @@
 
             await market.addPriceStatistics(this);
             await market.observeOrderChanges(this);
+        } else if (REGEX_PROFILE_PAGE.test(currentUrl)) {
+            if (RegExp('^https://warframe.market/profile/([^/]+)$').test(currentUrl)) {
+                // Orders tab
+                await profile.addCurrentMarketPrices(this);
+            }
         }
 
         misc.addCustomCSS(this);
@@ -45,8 +57,11 @@
     //  PRIVATE FUNCTIONS
     // ===================
 
-    const filterOrders = function(orders) {
-        return orders.filter(o => o.visible && o.order_type === 'sell' && o.region === REGION && o.user.status === STATUS)
+    const filterOrders = function(orders, orderType) {
+        if (!orderType)
+            orderType = 'sell';
+
+        return orders.filter(o => o.visible && o.order_type === orderType && o.region === REGION && o.user.status === STATUS)
                      .sort((o1, o2) => o1.platinum - o2.platinum);
     };
 
@@ -183,6 +198,60 @@
             _(self).ordersObserver.observe(rowsContainer[0], { childList: true });
 
             addCreationDate(rowsContainer.find('.order-row').toArray());
+        }
+    };
+
+    const profile = {
+        addCurrentMarketPrices: async function(self) {
+            await waitFor('.content__body > .container > .listing__orders');
+            let addMarketPrices = async (nodes, orderType) => {
+                for (let i = 0; i < nodes.length; ++i) {
+                    let N = $(nodes[i]);
+                    let item = REGEX_ITEMS_PAGE.exec(N.find('.order-unit__item .order__item-name')[0].href)[1];
+                    let orders = await fetch(`https://api.warframe.market/v1/items/${item}/orders`).then(data => data.json()).then(data => filterOrders(data.payload.orders, orderType));
+
+                    let lowest = {
+                        'platinum': orders[0].platinum,
+                        'quantity': orders.filter(o => o.platinum == orders[0].platinum).reduce((sum,o) => sum + o.quantity, 0)
+                    };
+                    let secondLowest = undefined;
+                    for (let j = 0; j < orders.length; ++j) {
+                        if (orders[j].platinum > orders[0].platinum) {
+                            secondLowest = {
+                                'platinum': orders[j].platinum,
+                                'quantity': orders.filter(o => o.platinum == orders[j].platinum).reduce((sum,o) => sum + o.quantity, 0)
+                            };
+                            break;
+                        }
+                    }
+
+                    let text = `${lowest.platinum}p (${lowest.quantity})` + (secondLowest ? `, ${secondLowest.platinum}p (${secondLowest.quantity})` : '');
+                    N.find('.order-unit__item .order-unit__description__item').append(
+                        $(document.createElement('div')).append(
+                            $(document.createElement('span')).append('Lowest Prices: ')
+                        ).append(
+                            $(document.createElement('div')).addClass('platinum_price').css({ 'display': 'inline-block', 'padding-right': '6px' }).append(
+                                $(document.createElement('b')).addClass('price').append(text)
+                            )
+                        )
+                    );
+                }
+            };
+
+            let sellRowsContainer = $('.content__body > .container > .listing__orders > .listing__sell > .infinite-scroll > .infinite-translate');
+            _(self).profileSellOrdersObserver = new MutationObserver(async function(mutations, observer) {
+                if (!mutations || mutations.length === 0)
+                    return;
+
+                let addedNodes = mutations.flatMap(e => $.makeArray(e.addedNodes)).filter(n => $(n).hasClass('order-unit'));
+                if (addedNodes.length > 0) {
+                    addMarketPrices(addedNodes, 'sell');
+                }
+            });
+            _(self).profileSellOrdersObserver.observe(sellRowsContainer[0], { childList: true });
+            await addMarketPrices(sellRowsContainer.find('.order-unit').toArray(), 'sell');
+
+            let buyRowsContainer = $('.content__body > .container > .listing__orders > .listing__buy > .infinite-scroll > .infinite-translate');
         }
     };
 
