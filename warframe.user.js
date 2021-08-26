@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         WARFRAME
-// @version      1.2.0
+// @version      1.2.1
 // @author       aleab
 // @source       https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe.user.js
 // @icon         https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/warframe.png
@@ -9,6 +9,7 @@
 // @match        https://warframe.market/*
 // @match        https://tennoware.com/*
 // @match        https://wf.xuerian.net/*
+// @match        https://hub.warframestat.us/*
 //
 // @grant        none
 // @require      https://raw.githubusercontent.com/aleab/userscripts-collection/v1.1.1/aleab-common.js
@@ -18,7 +19,7 @@
 /* eslint curly: off, no-eval: off  */
 /* global $, aleab, sleep           */
 
-const GITHUB_TAG = 'v1.2.0';
+const GITHUB_TAG = 'v1.2.1';
 const GITHUB_RAW_BASEURL = `https://raw.githubusercontent.com/aleab/userscripts-collection/${GITHUB_TAG}/warframe`;
 
 aleab.waitForModules().then(() => {

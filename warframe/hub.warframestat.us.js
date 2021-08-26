@@ -30,11 +30,11 @@
 
             /*let loaded = false;
             while (!loaded) {
-                await aleab.sleep(200);
+                await sleep(200);
                 loaded = typeof($($timersDiv.find('.binpacker-item')[0]).attr('style')) != 'undefined';
             }*/
-            await aleab.waitFor('.timers div > .binpacker-item[style]');
-            await aleab.sleep(200);
+            await waitFor('.timers div > .binpacker-item[style]');
+            await sleep(200);
 
             // Change the style of the container
             $(container).removeClass('grid', 'container-fluid').css({
