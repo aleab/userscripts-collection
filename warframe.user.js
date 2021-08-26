@@ -26,7 +26,8 @@ aleab.waitForModules().then(() => {
         const urls = [
             [ '^https://warframe.market/.*$', `${GITHUB_RAW_BASEURL}/warframe.market.js` ],
             [ '^https://tennoware.com/.*$', `${GITHUB_RAW_BASEURL}/tennoware.com.js` ],
-            [ '^https://wf.xuerian.net/.*$', `${GITHUB_RAW_BASEURL}/wf.xuerian.net.js` ]
+            [ '^https://wf.xuerian.net/.*$', `${GITHUB_RAW_BASEURL}/wf.xuerian.net.js` ],
+            [ '^https://hub.warframestat.us/.*$', `${GITHUB_RAW_BASEURL}/hub.warframestat.us.js` ]
         ];
 
         let doStuff = async function() {
