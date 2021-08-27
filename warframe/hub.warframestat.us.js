@@ -19,6 +19,59 @@
         return $(a);
     }
 
+    function prependCollapseButton() {
+        function _collapse(x, btn, i, listGroup, h) {
+            window.localStorage.setItem(`aleab-timers-collapse_${id}`, x);
+            if (x) {
+                btn.addClass('collapsed').attr('aria-expanded', 'false');
+                i.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                listGroup.hide();
+                h.addClass('mb-0');
+            } else {
+                btn.removeClass('collapsed').attr('aria-expanded', 'true');
+                i.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                listGroup.show();
+                h.removeClass('mb-0');
+            }
+        }
+
+        let $chevron = $('<i>', { class: 'fas' });
+        let $button = $('<button>', {
+            class: 'btn btn-secondary mb-1 py-0'.trim(),
+            type: 'button',
+            css: {
+                overflowAnchor: 'none',
+                position: 'absolute',
+                right: '15px'
+            }
+        });
+
+        const $h = $(this).find('> .header-panel');
+        const $listGroup = $(this).find('> .list-group');
+        $button.append($chevron).click(function() { _collapse(!$button.is('.collapsed'), $button, $chevron, $listGroup, $h); });
+        
+        const id = getPanelId(this);
+        const isCollapsed = window.localStorage.getItem(`aleab-timers-collapse_${id}`) === 'true';
+        _collapse(isCollapsed, $button, $chevron, $listGroup, $h);
+
+        return $button;
+    }
+
+    function getPanelId(element) {
+        if ($(element).is('.binpacker-item:has(#news-cycle-checkbox)')) return 'news';
+        if ($(element).is(".binpacker-item:has(> h4:contains('Alerts'))")) return 'alerts';
+
+        let className = element.className
+            .replace('panel-header', '')
+            .replace('binpacker-item', '')
+            .replace('mt-2', '')
+            .trim();
+        if (className === 'bounties') {
+            className += '-' + $(element).find('> h4').text().replace('Bounty Cycle', '').replace(' ', '').trim().toLowerCase();
+        }
+        return className;
+    }
+
     function HubWarframestatUs() {}
     HubWarframestatUs.prototype.doStuff = async function() {
         console.log(`WARFRAME | hub.warframestat.us: ${window.location.href}`);
@@ -28,11 +81,6 @@
             let container = $('.timers > .grid')[0];
             let $timersDiv = $('.timers div:has(> .binpacker-item)');
 
-            /*let loaded = false;
-            while (!loaded) {
-                await sleep(200);
-                loaded = typeof($($timersDiv.find('.binpacker-item')[0]).attr('style')) != 'undefined';
-            }*/
             await waitFor('.timers div > .binpacker-item[style]');
             await sleep(200);
 
@@ -56,17 +104,20 @@
             let c3 = $('<div>', o);
             $(container).append(c1, c2, c3);
 
-            $find($timersDiv, [ '.binpacker-item:has(#news-cycle-checkbox)', '.reset', '.darvo', '.baro', '.earth', '.cetus', '.vallis', '.cambion' ])
+            $find($timersDiv, [ '.binpacker-item:has(#news-cycle-checkbox)', '.reset', '.earth', '.cetus', '.vallis', '.cambion', '.baro', '.sales', '.darvo' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
+                .prepend(function() { return appendCollapseButton.apply(this); })
                 .appendTo(c1);
             $find($timersDiv, [ ".binpacker-item:has(> h4:contains('Alerts'))", '.construction', '.events', '.invasions', '.bounties' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
+                .prepend(function() { return appendCollapseButton.apply(this); })
                 .appendTo(c2);
-            $find($timersDiv, [ '.fissures', '.nightwave', '.sortie', '.arbitration', '.sol', '.sentientoutpost' ])
+            $find($timersDiv, [ '.fissures', '.nightwave', '.sortie', '.arbitration', '.sol', '.sentientoutpost', '.conclave' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
+                .prepend(function() { return appendCollapseButton.apply(this); })
                 .appendTo(c3);
 
             $timersDiv.remove();
