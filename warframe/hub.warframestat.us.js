@@ -107,17 +107,17 @@
             $find($timersDiv, [ '.binpacker-item:has(#news-cycle-checkbox)', '.reset', '.earth', '.cetus', '.vallis', '.cambion', '.baro', '.sales', '.darvo' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
-                .prepend(function() { return appendCollapseButton.apply(this); })
+                .prepend(function() { return prependCollapseButton.apply(this); })
                 .appendTo(c1);
             $find($timersDiv, [ ".binpacker-item:has(> h4:contains('Alerts'))", '.construction', '.events', '.invasions', '.bounties' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
-                .prepend(function() { return appendCollapseButton.apply(this); })
+                .prepend(function() { return prependCollapseButton.apply(this); })
                 .appendTo(c2);
             $find($timersDiv, [ '.fissures', '.nightwave', '.sortie', '.arbitration', '.sol', '.sentientoutpost', '.conclave' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
-                .prepend(function() { return appendCollapseButton.apply(this); })
+                .prepend(function() { return prependCollapseButton.apply(this); })
                 .appendTo(c3);
 
             $timersDiv.remove();
