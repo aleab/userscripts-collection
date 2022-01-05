@@ -1,4 +1,22 @@
-(function() {
+// ==UserScript==
+// @name         [WARFRAME] hub.warframestat.us
+// @version      1.3.0
+// @author       aleab
+// @source       https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/hub.warframestat.us.js
+// @icon         https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/warframe.png
+// @icon64       https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/warframe.png
+//
+// @match        https://hub.warframestat.us/*
+//
+// @grant        none
+// @require      https://raw.githubusercontent.com/aleab/userscripts-collection/v1.3.0/aleab-common.js
+// ==/UserScript==
+
+/* jshint esversion: 6              */
+/* eslint curly: off, no-eval: off  */
+/* global $, aleab, sleep, waitFor  */
+
+function _HubWarframestatUs() {
     const REGEX_TIMERS_PAGE = RegExp('^https://hub.warframestat.us/(#/)?$');
 
     let map = new WeakMap();
@@ -49,7 +67,7 @@
         const $h = $(this).find('> .header-panel');
         const $listGroup = $(this).find('> .list-group');
         $button.append($chevron).click(function() { _collapse(!$button.is('.collapsed'), $button, $chevron, $listGroup, $h); });
-        
+
         const id = getPanelId(this);
         const isCollapsed = window.localStorage.getItem(`aleab-timers-collapse_${id}`) === 'true';
         _collapse(isCollapsed, $button, $chevron, $listGroup, $h);
@@ -104,7 +122,7 @@
             let c3 = $('<div>', o);
             $(container).append(c1, c2, c3);
 
-            $find($timersDiv, [ '.binpacker-item:has(#news-cycle-checkbox)', '.reset', '.earth', '.cetus', '.vallis', '.cambion', '.baro', '.sales', '.darvo' ])
+            $find($timersDiv, [ '.time', '.binpacker-item:has(#news-cycle-checkbox)', '.baro', '.darvo', '.sales' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
                 .prepend(function() { return prependCollapseButton.apply(this); })
@@ -114,7 +132,7 @@
                 .removeAttr('style')
                 .prepend(function() { return prependCollapseButton.apply(this); })
                 .appendTo(c2);
-            $find($timersDiv, [ '.fissures', '.nightwave', '.sortie', '.arbitration', '.sol', '.sentientoutpost', '.conclave' ])
+            $find($timersDiv, [ '.fissures', '.nightwave', '.sortie', '.conclave' ])
                 .removeClass('col-md-4')
                 .removeAttr('style')
                 .prepend(function() { return prependCollapseButton.apply(this); })
@@ -125,4 +143,15 @@
     };
 
     return HubWarframestatUs;
-}());
+}
+
+aleab.waitForModules().then(() => {
+    $(document).ready(async function() {
+        let o = new (_HubWarframestatUs())();
+        aleab.setPageChangeEvent(async function() {
+            await sleep(200);
+            await o.doStuff();
+        });
+        await o.doStuff();
+    });
+});

@@ -1,4 +1,22 @@
-(function() {
+// ==UserScript==
+// @name         [WARFRAME] wf.xuerian.net
+// @version      1.3.0
+// @author       aleab
+// @source       https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/wf.xuerian.net.js
+// @icon         https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/warframe.png
+// @icon64       https://raw.githubusercontent.com/aleab/userscripts-collection/master/warframe/warframe.png
+//
+// @match        https://wf.xuerian.net/*
+//
+// @grant        none
+// @require      https://raw.githubusercontent.com/aleab/userscripts-collection/v1.3.0/aleab-common.js
+// ==/UserScript==
+
+/* jshint esversion: 6              */
+/* eslint curly: off, no-eval: off  */
+/* global $, aleab, sleep, waitFor  */
+
+function _WfXuerianNet() {
     const REGEX_WISHLIST_PAGE = RegExp('^https://wf.xuerian.net(/.+)?/?#wishlist$');
     const REGEX_RELIQUARY_PAGE = RegExp('^https://wf.xuerian.net(/.+)?/?#reliquary$');
 
@@ -584,4 +602,15 @@
     }
 
     return WfXuerianNet;
-}());
+}
+
+aleab.waitForModules().then(() => {
+    $(document).ready(async function() {
+        let o = new (_WfXuerianNet())();
+        aleab.setPageChangeEvent(async function() {
+            await sleep(200);
+            await o.doStuff();
+        });
+        await o.doStuff();
+    });
+});
